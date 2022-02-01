@@ -6,6 +6,13 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import './App.css';
 import { Card, Row, Col, Button, Image, Form, Container, InputGroup, FormControl } from "react-bootstrap";
 
+import {
+  connectWallet,
+  getGifList,
+  initialize,
+  uploadGif,
+  upVoteGif,
+} from './chainClient';
 
 import { Connection, PublicKey, clusterApiUrl} from '@solana/web3.js';
 import { Program, Provider, web3 } from '@project-serum/anchor';
