@@ -1,14 +1,17 @@
-## Running React on Repl.it
-
-[React](https://reactjs.org/) is a popular JavaScript library for building user interfaces.
-
-[Vite](https://vitejs.dev/) is a blazing fast frontend build tool that includes features like Hot Module Reloading (HMR), optimized builds, and TypeScript support out of the box.
-
-Using the two in conjunction is one of the fastest ways to build a web app.
-
-### Getting Started
-- Hit run
-- Edit [App.jsx](#src/App.jsx) and watch it live update!
-
-By default, Replit runs the `dev` script, but you can configure it by changing the `run` field in the `.replit` file.# BestFootballGifs
 # BestFootballGifs
+
+Built on Solana using [React] & [Rust]
+
+Upload your favorite football GIFs on the website
+Upvote the GIF you like the most 
+Tip the user if you like the GIF
+
+How to use:
+
+1. Get a Phantom Wallet to store your DevNet Solana. https://phantom.app/
+2. Make sure you switch to DevNet in Phantom. 
+3. Use https://solfaucet.com/ to deposit some DevNet Solana to your wallet. 
+4. Once you have connected your Solana Wallet you will be able to access the website. 
+
+
+
