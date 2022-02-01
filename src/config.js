@@ -2,7 +2,7 @@ import { PublicKey, clusterApiUrl } from "@solana/web3.js";
 
 
 export const programAddress = new PublicKey(
-    'EGWf3mBuwhvjmR134QfzKGMo8EgtsC4ieMP3D6mxWFXq'
+    '8hS16z59onCPBYDqbNnpCMjsMuoQYVe2vE7p3zZVoKxD'
 );
   
 export const pdaSeed = 'base_account22';
