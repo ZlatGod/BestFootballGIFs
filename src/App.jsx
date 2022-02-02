@@ -14,6 +14,8 @@ import {
   upVoteGif,
 } from './chainClient';
 
+import { programAddress, pdaSeed, network, connectionsOptions } from './config';
+
 import { Connection, PublicKey, clusterApiUrl} from '@solana/web3.js';
 import { Program, Provider, web3 } from '@project-serum/anchor';
 
@@ -47,13 +49,7 @@ const connectionsOptions = {
 // Constants
 
 const SolanaLink = 'https://solana.com/'
-const TEST_GIFS = [
-	'https://media.giphy.com/media/AbWzDpbWYTh9l1B3tc/giphy.gif',
-	'https://media.giphy.com/media/hryis7A55UXZNCUTNA/giphy.gif',
-	'https://media.giphy.com/media/r1IMdmkhUcpzy/giphy.gif',
-	'https://media.giphy.com/media/IoKZwSL0TlWzm/giphy.gif',
-  'https://media.giphy.com/media/nJued2Sh59vO0/giphy.gif'
-]
+
 const App = () => {
   // State
   const [walletAddress, setWalletAddress] = useState(null);
