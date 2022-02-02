@@ -6,19 +6,47 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import './App.css';
 import { Card, Row, Col, Button, Image, Form, Container, InputGroup, FormControl } from "react-bootstrap";
 
-import {
-  connectWallet,
-  getGifList,
-  initialize,
-  uploadGif,
-  upVoteGif,
-} from './chainClient';
+
+import { Connection, PublicKey, clusterApiUrl} from '@solana/web3.js';
+import { Program, Provider, web3 } from '@project-serum/anchor';
+
+import kp from './keypair.json'
+import idl from './idl.json';
+import { Buffer } from 'buffer';
+global.Buffer = Buffer;
+// SystemProgram is a reference to the Solana runtime!
+const { SystemProgram, Keypair } = web3;
+
+// Create a keypair for the account that will hold the GIF data.
 
 
 
+const arr = Object.values(kp._keypair.secretKey)
+const secret = new Uint8Array(arr)
+const baseAccount = web3.Keypair.fromSecretKey(secret)
+// Get our program's id from the IDL file.
+const programID = new PublicKey(idl.metadata.address);
+
+//Get 
+
+
+// Set our network to devnet.
+const endpoint = clusterApiUrl('devnet');
+
+// Controls how we want to acknowledge when a transaction is "done".
+const connectionsOptions = {
+  preflightCommitment: "processed"
+}
+// Constants
 
 const SolanaLink = 'https://solana.com/'
-
+const TEST_GIFS = [
+	'https://media.giphy.com/media/AbWzDpbWYTh9l1B3tc/giphy.gif',
+	'https://media.giphy.com/media/hryis7A55UXZNCUTNA/giphy.gif',
+	'https://media.giphy.com/media/r1IMdmkhUcpzy/giphy.gif',
+	'https://media.giphy.com/media/IoKZwSL0TlWzm/giphy.gif',
+  'https://media.giphy.com/media/nJued2Sh59vO0/giphy.gif'
+]
 const App = () => {
   // State
   const [walletAddress, setWalletAddress] = useState(null);
@@ -26,35 +54,81 @@ const App = () => {
   const [gifList, setGifList] = useState([]);
 
 
+  const getConnectionProvider = () => {
+    const connection = new Connection(
+      endpoint,
+      connectionsOptions.preflightCommitment
+    );
+
+    const provider = new Provider(
+      connection,
+      window.solana,
+      connectionsOptions.preflightCommitment
+    );
+    return provider;
+  };
 
 
-  const updateGifList = async (gifList) => {
-    if (gifList === undefined) {
-      console.log('gifList is undefined');
-      return;
-    }
-
+  const connectWallet = async () => {
     try {
+      const { solana } = window;
+
+      if (solana) {
+        const response = await solana.connect();
+        console.log('Connected with Public Key:', response.publicKey.toString());
+        setWalletAddress(response.publicKey.toString());
+        getGifList();
+      }
+      else { window.confirm('Solana object not found! Get a Phantom Wallet 👻. Click on OK to be redirected to the Phantom Wallet website. Phantom is the best wallet to hold Solana tokens. https://phantom.app/ ')
+      } 
+      } catch(error) {
+      console.error(error);
+    }
+  };
+
+  const getGifList = async() => {
+    try {
+      const provider = getConnectionProvider();
+      const program = new Program(idl, programID, provider);
+      const account = await program.account.baseAccount.fetch(baseAccount.publicKey);
+      
+      console.log("Got the account", account)
       setGifList(
-        gifList
-          .filter((item) => item.gifLink.includes('media'))
-          .sort((a, b) => (b.votes > a.votes ? 1 : -1))
+        account.gifList
+        .filter((item) => item.gifLink.includes("media"))
+        .sort((a,b) => (b.votes > a.votes ? 1 : -1))
       );
+
     } catch (error) {
-      console.log('Error in getGifList: ', error);
+      console.log("Error in getGifList: ", error)
+      setGifList(null)
+      ;
     }
   };
 
   const sendGif = async () => {
     if (inputValue.length === 0) {
-      console.log('No gif link given!');
-      return;
+      console.log("No gif link given!")
+      return
     }
+    setInputValue('');
     console.log('Gif link:', inputValue);
-    await uploadGif(inputValue);
-    // REFACTOR with useEffect and avoid repeating same code
-    const gifList = await getGifList();
-    updateGifList(gifList);
+    try {
+      const provider = getConnectionProvider();
+      const program = new Program(idl, programID, provider);
+
+      await program.rpc.addGif(inputValue, {
+        accounts: {
+          baseAccount: baseAccount.publicKey,
+          user: provider.wallet.publicKey,
+        },
+      });
+      console.log("GIF successfully sent to program", inputValue)
+
+      await getGifList();
+    } catch (error) {
+      console.log("Error sending GIF:", error)
+    }
   };
 
   const onInputChange = (event) => {
@@ -62,21 +136,35 @@ const App = () => {
     setInputValue(value);
   };
 
-  const connectToUserWallet = async () => {
-    const { publicKey } = await connectWallet();
-    setUserWalletAddress(publicKey);
-  };
+  const createGifAccount = async () => {
+    try {
+      const provider = getConnectionProvider();
+      console.log("ping");
+      const program = new Program(idl, programID, provider);
+      console.log("ping1");
+      await program.rpc.startStuffOff({
+        accounts: {
+          baseAccount: baseAccount.publicKey,
+          user: provider.wallet.publicKey,
+          systemProgram: SystemProgram.programId,
 
-  const initializePDA = async () => {
-    await initialize();
+        },
+        signers: [baseAccount]
+      });
+      console.log("Created a new BaseAccount w/ address:", baseAccount.publicKey.toString())
+      await getGifList();
+
+    } catch(error) {
+      console.log("Error creating BaseAccount account:", error)
+    }
   }
-  
-  
+
+
 
   const renderNotConnectedContainer = () => (
     <button
       lassName="wallet-connect" variant="primary"
-      onClick={connectToUserWallet}
+      onClick={connectWallet}
     >
       Connect to your Solana DevNet Wallet
     </button>
@@ -87,7 +175,7 @@ const App = () => {
     if (gifList === null) {
       return (
         <div className="connected-container">
-          <button className="" onClick={initializePDA}>
+          <button className="" onClick={createGifAccount}>
             Do One-Time Initialization For GIF Program Account
           </button>
         </div>
@@ -149,41 +237,75 @@ const App = () => {
   };
 
 
+  const createTransaction = async(instructions) => {
+    const anyTransaction = new web3.Transaction().add(instructions);
+    anyTransaction.feePayer = getConnectionProvider().wallet.publicKey;
+    console.log("Getting Recent Blockhash");
+    anyTransaction.recentBlockhash = (
+      await getConnectionProvider().connection.getRecentBlockhash()
+    ).blockhash;
+    return anyTransaction;
+  }
 
-  const sendTip = async (id) => {
-    console.log('Tipping:', id);
+  const createTransferTransaction = async (from, to, amount) => {
+    return createTransaction(
+      web3.SystemProgram.transfer({
+        fromPubkey: from,
+        toPubkey: to,
+        lamports: 100000 * amount,
+    }));
+  }
 
-    const fromWallet = userWalletAddress;
-    // could use a hashmap
-    const toWallet = gifList
-      .filter((x) => x.id === id)
-      .map((x) => x.userAddress);
-    const amount = 1;
-    await await transferSolana(fromWallet, toWallet, amount);
-  };
+  const sendTransaction = async(from, to, amount) => {
+    try {
+      console.log(`sending ${amount} from: ${from}, to: ${to}`);
+      let { signature } = await getConnectionProvider().wallet.signAndSendTransaction(await createTransferTransaction(from, to, amount));
+      console.log("Submitted transaction " + signature + ", awaiting confirmation");
+      await getConnectionProvider().connection.confirmTransaction(signature);
+      console.log("Transaction " + signature + " confirmed");
+    } catch (err) {
+      console.warn(err);
+      console.error("Error: " + JSON.stringify(err));
+    }
+  }
   
-  /* Votes */
-  const upVote = async (id) => {
-    console.log('UpVoting GifID:', id);
-    upVoteGif(id);
-  };
+  const sendTip = async(id) => {
+    console.log("Tipping:", id);
+
+    const fromWallet = walletAddress;
+    // could use a hashmap
+    const toWallet = gifList.filter(x => x.id === id).map(x => x.userAddress);
+    const amount = 1;
+    await sendTransaction(fromWallet, toWallet, amount);
+
+    sendTransaction(from, to, amount)    
+  }
+  
+  const incrementVote = async (id) => {
+    console.log("UpVoting GifID:", id);
+    const provider = await getConnectionProvider();
+    const program = new Program(idl, programID, provider);
+    try {
+      await program.rpc.upvoteGif(id, {
+        accounts: {
+          baseAccount: baseAccount.publicKey,
+          user: provider.wallet.publicKey
+        }
+      });
+      await getGifList();
+    } catch (error) {
+      console.log("Error UpVoting GifID:", id, error);
+    }
+  }
+
 
   useEffect(() => {
     const onLoad = async () => {
-      connectToUserWallet();
+      await connectWallet();
     };
-
-    window.addEventListener('load', onLoad);
-    return () => window.removeEventListener('load', onLoad);
+    window.addEventListener("load", onLoad);
+    return () => window.removeEventListener("load", onLoad);
   }, []);
-
-  useEffect(() => {
-    async function initChainClient() {
-      const gifList = await getGifList();
-      updateGifList(gifList);
-    }
-    initChainClient();
-  }, [userWalletAddress]);
 
   return (
     <div className="App">
